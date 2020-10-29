@@ -6,4 +6,4 @@ In the written tutorial, we recommend a three step workflow including automatic 
 
 ## Accompanying code
 
-To make recommendations by the tutorial more accessible, we have provided an R Notebook that guides the user through specific tools. The tools make use of publicly available available data and cover reference- and marker-based automatic annotation, manual annotation, and how to build a consensus set of cluster annotations.
+To make recommendations by the tutorial more accessible, we have provided an R Notebook that guides the user through specific tools. The tools make use of publicly available available data and cover reference- and marker-based automatic annotation, manual annotation, and how to build a consensus set of cluster annotations. The .Rmd file is the R Notebook file that can be downloaded and run on your own RStudio system. The .html file is a collection of the coding blocks and R output from the R Notebook file, which is essentially a human-readable visualization of the tutorial.
