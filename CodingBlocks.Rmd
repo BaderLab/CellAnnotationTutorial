@@ -109,7 +109,7 @@ One can use any rule they like to transfer information, such as cell-type or pse
 
 The query dataset we will be using is provided by 10X genomics. The data can be retrieved by writing the following on the command line.
 
-`wget https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz`
+`wget https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz`
 `tar -xvzf pbmc3k_filtered_gene_bc_matrices.tar.gz`
 The data can now be found in your directory `./filtered_gene_bc_matrices/hg19/`
 
