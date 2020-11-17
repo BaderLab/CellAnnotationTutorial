@@ -13,6 +13,8 @@ R version | Packages                    |                |
          .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0*
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`
 
+If any packages require installation through `BiocManager`, run `install.packages("BiocManager")`
+
 # 1. Reference-based automatic annotation
 
 ### Create the Reference
@@ -109,7 +111,7 @@ One can use any rule they like to transfer information, such as cell-type or pse
 
 The query dataset we will be using is provided by 10X genomics. The data can be retrieved by writing the following on the command line.
 
-`wget https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz`
+`wget https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz`
 `tar -xvzf pbmc3k_filtered_gene_bc_matrices.tar.gz`
 The data can now be found in your directory `./filtered_gene_bc_matrices/hg19/`
 
@@ -401,14 +403,16 @@ markers_seur <- FindAllMarkers(query_seur, only.pos = TRUE)
 markers_seur
 ```
 
-Marker genes are commonly viewed as a heatmap, which can be created as such:
+The expression of marker genes across clusters are commonly viewed as dot plots or heat maps. The dot plot communicates the percentage of cells in a cluster a marker gene is expressed in (the size of the dot) and mean detected gene expression for that cluster. A heat map communicates average marker gene expression across clusters. Both graphs are created below using the top 5 marker genes detected by Seurat for each cluster (filtered by the package dplyr) and default settings for the plots.
 
 ```{r}
 require(dplyr)
 # Retrieve the top 10 marker genes per cluster
-top10 <- markers_seur %>% group_by(cluster) %>% top_n(n = 10, wt = avg_logFC)
+top5 <- markers_seur %>% group_by(cluster) %>% top_n(n = 5, wt = avg_logFC)
+# Create the dot plot
+DotPlot(query_seur, features = unique(top5$gene))
 # Create the heatmap
-DoHeatmap(query_seur, features = top10$gene) + NoLegend()
+DoHeatmap(query_seur, features = unique(top5$gene)) + NoLegend()
 ```
 
 ### Pathway analysis
