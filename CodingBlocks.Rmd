@@ -7,7 +7,7 @@ Before beginning this tutorial, make sure you have the following packages instal
 
 R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
-4.0.2     |SingleCellExperiment_1.11.7* |dplyr_1.0.2*    |ggplot2_3.3.2
+4.0.3     |SingleCellExperiment_1.11.7* |dplyr_1.0.2*    |ggplot2_3.3.2
          .|Seurat_3.2.1                 |scmap_1.11.0*   |harmony_1.0**
          .|scater_1.17.5*               |celldex_0.99.1* |cerebroApp_1.2.2*
          .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0*
