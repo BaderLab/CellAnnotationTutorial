@@ -8,20 +8,19 @@ Before beginning this tutorial, make sure you have the following packages instal
 R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
 4.0.2     |SingleCellExperiment_1.11.7* |dplyr_1.0.2*    |ggplot2_3.3.2
-         .|Seurat_3.2.1                 |scmap_1.11.0*   |harmony_1.0*
+         .|Seurat_3.2.1                 |scmap_1.11.0*   |harmony_1.0**
          .|scater_1.17.5*               |celldex_0.99.1* |cerebroApp_1.2.2*
          .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0*
-"*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`
+"*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
+"**" = packages must be installed by from github using devtools, see code block below.
 
-If any packages require installation through `BiocManager`, run `install.packages("BiocManager")`
-
-Alternatively, an installation code chunk has been provided below to help install the latest versions of all of the above programs. Run this only if you need to install all programs from scratch.
+Alternatively, an installation code chunk has been provided below to help install the latest versions of all of the above programs. Run this only if you need to install all programs from scratch.  Select compile from source if prompted.
 
 ```{r, echo = TRUE, results = 'hide'}
-install.packages(c("BiocManager","Seurat","SCINA","ggplot2"))
+install.packages(c("BiocManager","Seurat","SCINA","ggplot2","devtools"))
 BiocManager::install(c("SingleCellExperiment","scater","dplyr",
-                       "scmap","celldex","SingleR","harmony",
-                       "cerebroApp","msigdb"))
+                       "scmap","celldex","SingleR","cerebroApp","msigdb"))
+devtools::install_github("immunogenomics/harmony")
 ```
 
 This tutorial goes through multiple methods on annotation an unlabeled single-cell dataset, referred to as the query. We have chosen to label a single-cell experiment that consists of peripheral blood mononuclear cells (PBMCs). The tutorial consists of the following:
@@ -134,19 +133,13 @@ One can use any rule they like to transfer information, such as cell-type or pse
 
 ### Assign cells from the query dataset to the reference.
 
-The query dataset we will be using is provided by 10X genomics. First, using the command line, navigate to the directory that you are currently in. If you are unsure of what directory that is, run the following command:
+The query dataset we will be using is provided by 10X genomics.
 
 ```{r}
-getwd()
+download.file("https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+              "pbmc3k_filtered_gene_bc_matrices.tar.gz")
+untar("pbmc3k_filtered_gene_bc_matrices.tar.gz",compressed="gzip")
 ```
-
-Navigate to this directory, and the 10X genomics data can be retrieved by writing the following on the command line.
-
-`wget https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz`
-`tar -xvzf pbmc3k_filtered_gene_bc_matrices.tar.gz`
-The data can now be found in your directory `./filtered_gene_bc_matrices/hg19/`
-
-An alternative method is to copy and paste the same link into your browser, and the data will automatically download and can subsequently be extracted. Just make sure it ends up in the relative file path of ./filtered_gene_bc_matrices/hg19/
 
 Now we need to load our unlabeled dataset into R. Normal preprocessing including QC filtering, normalizing and log-transforming the data must be done prior to annotating. In addition, scmap is based on the **SingleCellExperiment object**, so if our data is stored as a Seurat object we must convert it to SingleCellExperiment as shown below.
 
