@@ -25,7 +25,7 @@ harmony_1.0*
 cerebroApp_1.2.2*
 msigdb_0.2.0
 ```
-Further testing has been done with `R 4.0.3`, for which harmony is unfortunately not available. 
+Further testing has been done with `R 4.0.3`, for which Harmony is unfortunately not available. 
 
 If you haven't yet installed R on your system, you can install R at https://cran.r-project.org/ and R Studio at https://rstudio.com/products/rstudio/download/.
 
