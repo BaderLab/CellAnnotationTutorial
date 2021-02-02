@@ -9,18 +9,20 @@ R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
 4.0.3     |SingleCellExperiment_1.11.7* |dplyr_1.0.2*    |ggplot2_3.3.2
          .|Seurat_3.2.1                 |scmap_1.11.0*   |harmony_1.0**
-         .|scater_1.17.5*               |celldex_0.99.1* |cerebroApp_1.2.2*
-         .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0*
+         .|scater_1.17.5*               |celldex_0.99.1* |cerebroApp_1.2.2**
+         .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0**
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
 "**" = packages must be installed by from github using devtools, see code block below.
 
 Alternatively, an installation code chunk has been provided below to help install the latest versions of all of the above programs. Run this only if you need to install all programs from scratch.  Select compile from source if prompted.
 
 ```{r, echo = TRUE, results = 'hide'}
-install.packages(c("BiocManager","Seurat","SCINA","ggplot2","devtools"))
+install.packages(c("BiocManager","Seurat","SCINA","ggplot2","devtools","shiny"))
 BiocManager::install(c("SingleCellExperiment","scater","dplyr",
-                       "scmap","celldex","SingleR","cerebroApp","msigdb"))
+                       "scmap","celldex","SingleR"))
 devtools::install_github("immunogenomics/harmony")
+devtools::install_github("romanhaa/cerebroApp")
+devtools::install_github("mw201608/msigdb")
 ```
 
 This tutorial goes through multiple methods on annotation an unlabeled single-cell dataset, referred to as the query. We have chosen to label a single-cell experiment that consists of peripheral blood mononuclear cells (PBMCs). The tutorial consists of the following:
