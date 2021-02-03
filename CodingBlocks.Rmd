@@ -7,10 +7,11 @@ Before beginning this tutorial, make sure you have the following packages instal
 
 R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
-4.0.3     |SingleCellExperiment_1.11.7* |dplyr_1.0.2*    |ggplot2_3.3.2
-         .|Seurat_3.2.1                 |scmap_1.11.0*   |harmony_1.0**
-         .|scater_1.17.5*               |celldex_0.99.1* |cerebroApp_1.2.2**
-         .|SCINA_1.2.0                  |SingleR_1.3.8*  |msigdb_0.2.0**
+4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.3*    |ggplot2_3.3.3
+         .|Seurat_3.2.2                 |scmap_1.12.0*   |harmony_1.0**
+         .|scater_1.18.3*               |celldex_1.0.0*  |cerebroApp_1.2.2**
+         .|SCINA_1.2.0                  |SingleR_1.4.0*  |msigdb_0.2.0**
+         .|devtools_2.3.2               |                |
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
 "**" = packages must be installed by from github using devtools, see code block below.
 
@@ -42,7 +43,7 @@ Here, we extract marker genes and associated pathways from the query dataset. To
 # 1. Reference-based automatic annotation
 
 ### Create the Reference
-The first step in performing reference-based annotation is to select an annotated dataset to use as the reference. Here we will use one of the references created by the authors of SingleR and show how it can be used with another tool.
+The first step in performing reference-based annotation is to select an annotated dataset to use as the reference. Here we will use one of the references created by the authors of SingleR and show how it can be used with other tools such as scmap.
 
 Other reference datasets can be found in GEO (https://www.ncbi.nlm.nih.gov/geo/) or at a link provided by the authors of the reference dataset. However, to use a dataset as a reference you will need both the single-cell RNA sequencing data and the cell-type annotations. GEO does not require authors to provide the cell-type annotations of their data, so you may need to contact the authors directly to to get the annotations for some datasets.
 
@@ -52,8 +53,7 @@ set.seed(9742)
 # Download singleR reference data for immune cells and save it as the variable "ref"
 # The variable is a class called "Summarized Experiment"
 # This will take a while
-library(celldex)
-ref <- DatabaseImmuneCellExpressionData()
+ref <- celldex::DatabaseImmuneCellExpressionData()
 ```
 
 Next we need to reformat the data to ensure it is compatible with the tool we are using. We will be demonstrating **scmap**, which uses data formatted as a 'SingleCellExperiment object', and assumes by default that gene names are found in a column named 'feature_symbol' while the cell-type labels are in a column named 'cell_type1'. In addition, scmap requires that you normalize and log-transform the reference data; this has already been done for the SingleR reference data so we skip those steps here.
@@ -65,21 +65,23 @@ colData(ref)$cell_type1 <- colData(ref)$label.fine
 rowData(ref)$feature_symbol <- rownames(ref)
 
 # Convert the data into a SingleCellExperiment object
-require(SingleCellExperiment)
-ref_sce <- SingleCellExperiment(assays=list(logcounts=Matrix::Matrix(assays(ref)$logcounts)), 
+ref_sce <- SingleCellExperiment::SingleCellExperiment(assays=list(logcounts=Matrix::Matrix(assays(ref)$logcounts)), 
 			colData=colData(ref), rowData=rowData(ref))
 ```
 
-Our reference data is ready to me used now. So lets process this data to build 
-the index we will use to map our unlabeled data to. First, we select genes to use, which will be those deemed most informative by scmap:
+Our reference data is ready to be used now. So lets process this data to build 
+the index we will use to map our unlabeled data to. First, we select genes to use, which will be those deemed most informative by scmap after fitting a linear model to the gene expression by gene dropout distribution. Those which are most informative have high expression values and low % dropout rates across cells.
 
 ```{r}
-require(scmap)
 # Create scmap-cluster reference by first selecting the most informative features
-ref_sce <- selectFeatures(ref_sce, suppress_plot=FALSE)
+ref_sce <- scmap::selectFeatures(ref_sce, suppress_plot=FALSE)
 
 # Inspect the first 50 genes selected by scmap
 rownames(ref_sce)[which(rowData(ref_sce)$scmap_features)][1:50]
+
+# You can check and see how many genes were chosen by checking the length of the
+# vector of gene names
+length(rownames(ref_sce)[which(rowData(ref_sce)$scmap_features)])
 ```
 
 Now we can see the genes that scmap has chosen to use. If there are key marker genes missing we can make sure they are included like this:
@@ -89,6 +91,9 @@ Now we can see the genes that scmap has chosen to use. If there are key marker g
 my_key_markers = c("TRAC", "TRBC1", "TRBC2", "TRDC", "TRGC1", "TRGC2", "IGKC")
 # Ensure markers are in the list of features used by scmap
 rowData(ref_sce)$scmap_features[rownames(ref_sce) %in% my_key_markers] <- TRUE
+# You can check and see if this added any genes by checking the length 
+# of the vector of gene names again
+length(rownames(ref_sce)[which(rowData(ref_sce)$scmap_features)])
 ```
 
 And we can remove genes that we think might be technical artefacts, such as mitochondria RNAs, like this:
@@ -98,20 +103,36 @@ And we can remove genes that we think might be technical artefacts, such as mito
 mt_genes <- rownames(ref_sce)[grep("^MT-", rownames(ref_sce))]
 # Remove these genes from the features used by scmap
 rowData(ref_sce)$scmap_features[rownames(ref_sce) %in% mt_genes] <- FALSE
+# Check how many genes this is
+length(rownames(ref_sce)[which(rowData(ref_sce)$scmap_features)])
 
 # Extract the features and assign them to a new variable, "scmap_feature_genes"
 scmap_feature_genes <- rownames(ref_sce)[which(rowData(ref_sce)$scmap_features)]
+# Note that the number of genes/features is identical to what we just checked
+length(scmap_feature_genes)
 ```
 
 Now we build the reference profiles used in **scmap-cluster**, for **cluster-based cell-type annotation**. These profiles can be accessed and plotted from inside the SingleCellExperiment object as follows:
 
-```{r}
+```{r, fig.width=10, fig.height=50}
 # Create reference profiles;
 # Once reference profiles are generated the original data are 
 # not needed for scmap-cluster
 ref_sce <- scmap::indexCluster(ref_sce)
 # Visualize interesting features as a heatmap
-heatmap(as.matrix(metadata(ref_sce)$scmap_cluster_index))
+# Reformat the data so that they can be used as input to ggplot2
+cormat <- reshape2::melt(as.matrix(metadata(ref_sce)$scmap_cluster_index))
+# Plot the data
+ggplot2::ggplot(cormat, ggplot2::aes(x = Var2, y = Var1, fill = value)) +
+  ggplot2::geom_tile() +
+  ggplot2::scale_fill_gradient2(low = "blue", high = "darkred",
+                                name = "Expression value") +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 1,
+                                            size = 18, hjust = 1),
+                 axis.text.y = ggplot2::element_text(size = 15),
+                 axis.title.x = ggplot2::element_blank(),
+                 axis.title.y = ggplot2::element_blank())
 # Store expression information as a variable
 scmap_cluster_reference <- metadata(ref_sce)$scmap_cluster_index
 ```
@@ -138,25 +159,24 @@ One can use any rule they like to transfer information, such as cell-type or pse
 The query dataset we will be using is provided by 10X genomics.
 
 ```{r}
-download.file("https://s3-us-west-2.amazonaws.com/10x.files/samples/cell/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
+download.file("https://cf.10xgenomics.com/samples/cell-exp/1.1.0/pbmc3k/pbmc3k_filtered_gene_bc_matrices.tar.gz",
               "pbmc3k_filtered_gene_bc_matrices.tar.gz")
-untar("pbmc3k_filtered_gene_bc_matrices.tar.gz",compressed="gzip")
+untar("pbmc3k_filtered_gene_bc_matrices.tar.gz")
 ```
 
 Now we need to load our unlabeled dataset into R. Normal preprocessing including QC filtering, normalizing and log-transforming the data must be done prior to annotating. In addition, scmap is based on the **SingleCellExperiment object**, so if our data is stored as a Seurat object we must convert it to SingleCellExperiment as shown below.
 
 
 ```{r}
-require(Seurat)
 # This portion of the tutorial is assuming the raw 10X data is in the
 # following folder in your directory:
-data <- Read10X("filtered_gene_bc_matrices/hg19/")
+data <- Seurat::Read10X("filtered_gene_bc_matrices/hg19/")
 # Make SingleCellExperiment from the raw matrix
-query_sce <- SingleCellExperiment(assays=list(counts=data))
+query_sce <- SingleCellExperiment::SingleCellExperiment(assays=list(counts=data))
 
 # Make SingleCellExperiment from Seurat object
-query_seur <- CreateSeuratObject(data)
-query_sce <- as.SingleCellExperiment(query_seur)
+query_seur <- Seurat::CreateSeuratObject(data)
+query_sce <- Seurat::as.SingleCellExperiment(query_seur)
 
 # normalize the data using the scater package
 query_sce <- scater::logNormCounts(query_sce)
@@ -169,12 +189,12 @@ Now you should have an entry in `assays(my_sce)` called `logcounts` with the log
 
 ```{r}
 # Run scmapCluster
-scmap_cluster_res <- scmapCluster(projection=query_sce, 
+scmap_cluster_res <- scmap::scmapCluster(projection=query_sce, 
 				index_list=list(immune1 = scmap_cluster_reference), 
 				threshold=0.1)
 
 # plot the results of our annotation
-par(mar=c(10, 4, 0, 0))
+par(mar=c(13, 4, 1, 0))
 barplot(table(scmap_cluster_res$combined_labs), las=2)
 
 # Store this annotation information within the query object
@@ -190,7 +210,7 @@ Alternatively we could use **scmap-cell**, to find the 10 nearest neighbours to 
 ```{r}
 # Determine the 10 nearest neighbours from the reference dataset for each
 # cell in the query dataset using scmapCell
-nearest_neighbours <- scmapCell(projection=query_sce, 
+nearest_neighbours <- scmap::scmapCell(projection=query_sce, 
 	index_list = list(immune1 = scmap_cell_reference), 
 	w=10)
 
@@ -221,15 +241,20 @@ Another option compatible with the SingleCellExperiment Object is **SingleR**. A
 reference index as we did with scmap. In addition, running just this small example demonstrates the difference in run time between the methods (SingleR takes a fair bit of time). 
 
 ```{r}
-require(SingleR)
 # Run SingleR on the query data and the reference to acquire
 # cell-type predictions for the cells in the query dataset
-predictions <- SingleR(test=query_sce, ref=ref, labels=ref$label.fine)
+predictions <- SingleR::SingleR(test=query_sce, ref=ref, labels=ref$label.fine)
+# You'll notice that some of the cells didn't get assigned a cell identity
+# We can count the number here:
+sum(is.na(predictions$pruned.labels))
+# Change NAs to "ambiguous"
+predictions$pruned.labels[which(is.na(predictions$pruned.labels))] <- "ambiguous"
+# Add singleR labels to query_sce
 colData(query_sce)$singleR <- predictions$pruned.labels
 
 # Create a bar plot of number of cells per assigned cell ID
-par(mar=c(10, 4, 0, 0))
-barplot(table(scmap_cell_labs), las=2)
+par(mar=c(13, 4, 2, 0))
+barplot(table(predictions$pruned.labels), las=2)
 
 # Make a UMAP and add the cell-type annotations
 scater::plotReducedDim(query_sce, dimred="UMAP", colour_by="singleR")
@@ -251,49 +276,49 @@ assays(ref_sce)[["counts"]] <- round(2^assays(ref_sce)[["logcounts"]]) -1
 colnames(ref_sce) <- paste("cell", 1:ncol(ref_sce))
 
 # Subset both objects so both the reference and query datasets have the same genes
-ref_seur <- as.Seurat(ref_sce[rownames(ref_sce) %in% rownames(query_sce),])
+# First subset the reference
+ref_seur <- Seurat::as.Seurat(ref_sce[rownames(ref_sce) %in% rownames(query_sce),])
 ref_seur@active.ident <- factor(rep("reference", ncol(ref_seur)))
-
-query_seur <- as.Seurat(query_sce[rownames(query_seur) %in% rownames(ref_sce),])
+# Now subset the query
+query_seur <- Seurat::as.Seurat(query_sce[rownames(query_seur) %in% rownames(ref_sce),])
 query_seur@active.ident <- factor(rep("query", ncol(query_seur)))
 
 # Downsample the reference to be similar to query in terms of total UMIs
 totalUMI <- median(query_seur@meta.data$nCount_RNA)
-ref_seur@assays$RNA@counts <- SampleUMI(ref_seur@assays$RNA@counts, max.umi=totalUMI, upsample=FALSE)
+ref_seur@assays$RNA@counts <- Seurat::SampleUMI(ref_seur@assays$RNA@counts,
+                                                max.umi=totalUMI, upsample=FALSE)
 
 # Merge the datasets together into a single Seurat object
 merged_seur <- merge(ref_seur, query_seur)
 merged_seur@meta.data$source <- merged_seur@active.ident
 
-# Normalize the data
-require(harmony)
-merged_seur <- NormalizeData(merged_seur)
+# Normalize the combined data
+merged_seur <- Seurat::NormalizeData(merged_seur)
 
-# For consistency we use the scmap feature genes
-VariableFeatures(merged_seur) <- scmap_feature_genes
+# Rather than choosing new variable features, we will choose
+# the genes that had been previously important by scmap for consistency
+Seurat::VariableFeatures(merged_seur) <- scmap_feature_genes
 
-require(ggplot2)
-
-# Scale the data and run dimensionality reduction
-merged_seur <- ScaleData(merged_seur)
-merged_seur <- RunPCA(merged_seur)
-merged_seur <- RunUMAP(merged_seur, dims=1:15)
-DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("Before Integration")
+# Scale the data and run dimensionality reduction on the combined data
+merged_seur <- Seurat::ScaleData(merged_seur)
+merged_seur <- Seurat::RunPCA(merged_seur)
+merged_seur <- Seurat::RunUMAP(merged_seur, dims=1:15)
+Seurat::DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("Before Integration")
 # Run Harmony to remove batch effects
-merged_seur <- RunHarmony(merged_seur, "source", dims.use=1:15)
-merged_seur <- RunUMAP(merged_seur, dims=1:15, reduction="harmony")
+merged_seur <- harmony::RunHarmony(merged_seur, "source", dims.use=1:15)
+merged_seur <- Seurat::RunUMAP(merged_seur, dims=1:15, reduction="harmony")
 # Plot the data
-DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("After Integration")
+Seurat::DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("After Integration")
 ```
 
 Now that the data is integrated we will cluster the data and look at the annotations of the reference cells present in each cluster. As with all clustering, this may require manual tuning of the resolution parameters to get the best labels.
 
 ```{r}
 # Cluster the integrated dataset
-merged_seur <- FindNeighbors(merged_seur, reduction="harmony", dims=1:15)
-merged_seur <- FindClusters(merged_seur, resolution=0.5)
+merged_seur <- Seurat::FindNeighbors(merged_seur, reduction="harmony", dims=1:15)
+merged_seur <- Seurat::FindClusters(merged_seur, resolution=0.5)
 # Plot the data
-DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("After Integration")
+Seurat::DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("After Integration")
 # Create a table of cluster labels based on integrated data
 table(merged_seur@meta.data$label.fine, 
 		merged_seur@active.ident)
@@ -301,21 +326,23 @@ table(merged_seur@meta.data$label.fine,
 
 
 Here we have a table of the reference annotations (across rows) per cluster (across columns). 
-We can manually label the clusters based on this table or we could create a rule to algorithmically label the clusters based on this table. Since there are only 10 clusters, we assign the labels manually.
+We can manually label the clusters based on this table or we could create a rule to algorithmically label the clusters based on this table. Since there are only 11 clusters, we assign the labels manually.
 
 ```{r}
 cluster_labs <- c("0"="ambiguous", 
-	"1"="NK cells", 
-	"2"="Monocytes, CD14+", 
-	"3"="B cells, naive",
-	"4"="T cells, CD4+, naive TREG",
-	"5"="T cells, CD8+, naive",
-	"6"="Monocytes, CD16+",
-	"7"="T cells, CD4+, memory TREG ",
-	"8"="T cells, CD4+, naive, stimulated ",
-	"9"="T cells, CD8+, naive, stimulated")
+	"1"="Monocytes, CD14+", 
+	"2"="B cells, naive", 
+	"3"="T cells, CD4+, naive TREG",
+	"4"="T cells, CD4+, Th1_17",
+	"5"="NK cells",
+	"6"="T cells, CD8+, naive",
+	"7"="Monocytes, CD16+",
+	"8"="T cells, CD4+, memory TREG",
+	"9"="T cells, CD4+, naive, stimulated",
+	"10" = "T cells, CD8+, naive, stimulated")
 
 # Assign cluster label to the associated query cells
+# (the query cells that had been assigned the same cluster label)
 merged_seur@meta.data$annotation <- cluster_labs[merged_seur@meta.data$RNA_snn_res.0.5]
 
 # Add the results to the SingleCellExperiment Object and plot
@@ -349,11 +376,14 @@ scater::plotReducedDim(query_sce, dimred="UMAP", colour_by="consensus_lab")
 
 # 3. Marker-based automatic annotation
 
-An alternative way for annotation of your query scRNAseq dataset is to utilize Marker-based annotation tools. **SCINA** is a **semi-supervised annotation tool** that takes in the signature genes and expression matrix and predicts the potential labels based on the prior knowledge of the cell-type-specific markers. List of markers is usually provided in the gmt format. The PBMC gene set used bellow have been gathered by [Diaz-Mejia JJ et al.](https://zenodo.org/record/3369934#.X2PWty2z1QI)
+An alternative way for annotation of your query scRNAseq dataset is to utilize Marker-based annotation tools. **SCINA** is a **semi-supervised annotation tool** that takes in the signature genes and expression matrix and predicts the potential labels based on the prior knowledge of the cell-type-specific markers. List of markers is usually provided in the gmt format. The PBMC gene set used below have been gathered by [Diaz-Mejia JJ et al.](https://zenodo.org/record/3369934#.X2PWty2z1QI)
 
-The data can be gathered directly by downloading and extracting the pbmc_22_10x.tar.bz2 file, or entering the following on the command line:
-`wget https://zenodo.org/record/3369934/files/pbmc_22_10x.tar.bz2`
-`tar -xvjf pbmc_22_10x.tar.bz2`
+```{r}
+download.file("https://zenodo.org/record/3369934/files/pbmc_22_10x.tar.bz2",
+              "pbmc_22_10x.tar.bz2")
+untar("pbmc_22_10x.tar.bz2")
+```
+
 The extracted data will by located in the following file:
 `./MY_PAPER/SUPPLEMENTARY_DATA/pbmc_22_10x/pbmc_22_10x_cell_type_signature_gene_sets.gmt`
 
@@ -361,19 +391,16 @@ The results from this annotation tool are not used in the above step to find con
 
 
 ```{r}
-require(SCINA)
-require(msigdb)
-
 # Import the marker genes as a GMT file and store as a variable
-markers <- read.gmt('./MY_PAPER/SUPPLEMENTARY_DATA/pbmc_22_10x/pbmc_22_10x_cell_type_signature_gene_sets.gmt')
+markers <- msigdb::read.gmt('./MY_PAPER/SUPPLEMENTARY_DATA/pbmc_22_10x/pbmc_22_10x_cell_type_signature_gene_sets.gmt')
 # Convert the expression data from Seurat object into a matrix data structure
-exprMatrix <- as.matrix(GetAssayData(query_seur))
+exprMatrix <- as.matrix(Seurat::GetAssayData(query_seur))
 # Run SCINA on the query data using the marker genes to identify cell types
 # Specifying rm_overlap = FALSE allows the same marker gene to specify multiple cell types which
 # may be useful if identifying cell subtypes or other similar types of cells
 # Specifying allow_unknown = TRUE allows cells to be labeled as "unknown" instead of being
 # assigned a low-confident label
-predictions.scina = SCINA(exp = exprMatrix, signatures = markers$genesets,
+predictions.scina = SCINA::SCINA(exp = exprMatrix, signatures = markers$genesets,
                           rm_overlap = FALSE, allow_unknown = TRUE)
 # Add SCINA annotation information to each cell in Seurat object
 colData(query_sce)$SCINA <- predictions.scina$cell_labels
@@ -390,39 +417,40 @@ scater::plotReducedDim(query_sce, dimred="UMAP", colour_by="SCINA")
 If you do not have an extensive list of markers per cell type, or a good quality reference dataset, it is useful to extract the top marker genes from each cluster of your query data. We can easily do this in **Seurat**, with the data formatted as a ***Seurat object** (which we created earlier and stored as the variable `query_seur`). First, the data must be normalized and scaled, and the variable genes between cells must be determined.
 
 ```{r}
-require(Seurat)
-query_seur <- NormalizeData(query_seur) # Normalize the data
-query_seur <- FindVariableFeatures(query_seur) # Determine the variable features of the dataset
-query_seur <- ScaleData(query_seur) # Scale the data based on the variable features
+query_seur <- Seurat::NormalizeData(query_seur) # Normalize the data
+query_seur <- Seurat::FindVariableFeatures(query_seur) # Determine the variable features of the dataset
+query_seur <- Seurat::ScaleData(query_seur) # Scale the data based on the variable features
 ```
 
 Next, different types of dimensionality reduction must be performed on the data so that the cells can be grouped together in 2D space.
 
 ```{r}
-query_seur <- RunPCA(query_seur)
-query_seur <- RunTSNE(query_seur)
-query_seur <- RunUMAP(query_seur, dims = 1:50)
+query_seur <- Seurat::RunPCA(query_seur)
+query_seur <- Seurat::RunTSNE(query_seur)
+# RunUMAP has already been performed on the data, so the following line of code
+# does not need to be run in this case:
+#query_seur <- Seurat::RunUMAP(query_seur, dims = 1:50)
 ```
 
 From this object, we can cluster the data at a chosen resolution that can be modified later on if desired.
 
 ```{r}
 # Determine the "nearest neighbours" of each cell
-query_seur <- FindNeighbors(query_seur, dims = 1:50)
+query_seur <- Seurat::FindNeighbors(query_seur, dims = 1:50)
 # Cluster the cells
-query_seur <- FindClusters(query_seur, resolution = 0.5)
+query_seur <- Seurat::FindClusters(query_seur, resolution = 0.5)
 ```
 
 Before extracting the marker genes, let's visualize our data on a UMAP.
 
 ```{r}
-DimPlot(query_seur, reduction = "umap")
+Seurat::DimPlot(query_seur, reduction = "UMAP")
 ```
 
 Now let's extract the top marker genes, and see which ones correspond with each cluster. This can be done using the FindAllMarkers function within Seurat.
 
 ```{r, echo = TRUE, results = 'hide'}
-markers_seur <- FindAllMarkers(query_seur, only.pos = TRUE)
+markers_seur <- Seurat::FindAllMarkers(query_seur, only.pos = TRUE)
 ```
 
 ```{r}
@@ -434,45 +462,48 @@ The expression of marker genes across clusters are commonly viewed as dot plots 
 
 ```{r}
 require(dplyr)
-# Retrieve the top 10 marker genes per cluster
-top5 <- markers_seur %>% dplyr::group_by(cluster) %>%
+# Retrieve the top 5 marker genes per cluster
+top5 <- markers_seur %>% group_by(cluster) %>%
   dplyr::top_n(n = 5, wt = avg_logFC)
 # Create the dot plot
-DotPlot(query_seur, features = unique(top5$gene))
+Seurat::DotPlot(query_seur, features = unique(top5$gene)) +
+  ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 1,
+                                            size = 8, hjust = 1)) +
+  Seurat::NoLegend()
 # Create the heatmap
-DoHeatmap(query_seur, features = unique(top5$gene)) + NoLegend()
+Seurat::DoHeatmap(query_seur, features = unique(top5$gene)) +
+  Seurat::NoLegend() +
+  ggplot2::theme(axis.text.y = ggplot2::element_text(size = 8))
 ```
 
 ### Pathway analysis
 
-Pathway analysis can also be done for each cluster to determine significantly up- and downregulated pathways based on known gene function. An easy way to do this is by feeding our current Seurat object into **cerebroApp**. Since pathway analysis is based on the differential expression of genes, marker genes must be fetched again through cerebro before performing simple pathway analysis.
+Pathway analysis can also be done for each cluster to determine significantly up- and downregulated pathways based on known gene function. An easy way to do this is by feeding our current Seurat object into **cerebroApp**. cerebroApp requires that marker genes be fetched again through before performing simple pathway analysis.
 
 ```{r, echo = TRUE, results = 'hide'}
-require(cerebroApp)
-
 # First get marker genes through cerebro
-query_seur <- getMarkerGenes(query_seur,
-                      assay = "RNA",
-                      organism = "hg",
-                      column_sample = "orig.ident",
-                      column_cluster = "seurat_clusters")
+query_seur <- cerebroApp::getMarkerGenes(query_seur,
+                                         assay = "RNA",
+                                         organism = "hg",
+                                         column_sample = "orig.ident",
+                                         column_cluster = "seurat_clusters")
 
 # Get enriched pathways through cerebro
-query_seur <- getEnrichedPathways(query_seur,
-                    column_sample = "orig.ident",
-                    column_cluster = "seurat_clusters",
-                    databases = c("GO_Biological_Process_2018",
-                                  "GO_Cellular_Component_2018",
-                                  "GO_Molecular_Function_2018",
-                                  "KEGG_2016",
-                                  "WikiPathways_2016",
-                                  "Reactome_2016",
-                                  "Panther_2016",
-                                  "Human_Gene_Atlas",
-                                  "Mouse_Gene_Atlas"),
-                    adj_p_cutoff = 0.05,
-                    max_terms = 100,
-                    URL_API = "http://amp.pharm.mssm.edu/Enrichr/enrich")
+query_seur <- cerebroApp::getEnrichedPathways(query_seur,
+                                              column_sample = "orig.ident",
+                                              column_cluster = "seurat_clusters",
+                                              databases = c("GO_Biological_Process_2018",
+                                                            "GO_Cellular_Component_2018",
+                                                            "GO_Molecular_Function_2018",
+                                                            "KEGG_2016",
+                                                            "WikiPathways_2016",
+                                                            "Reactome_2016",
+                                                            "Panther_2016",
+                                                            "Human_Gene_Atlas",
+                                                            "Mouse_Gene_Atlas"),
+                                              adj_p_cutoff = 0.05,
+                                              max_terms = 100,
+                                              URL_API = "http://amp.pharm.mssm.edu/Enrichr/enrich")
 ```
 
 ```{r}
@@ -485,3 +516,4 @@ Combining top marker genes with functional pathway information should be fairly 
 Pathway analysis can also be done by pasting a list of marker genes for a specific cluster into an online resource such as gProfiler.
 
 None of these methods can determine the identity of a cell with absolute certainty. However, combining these resources can provide robust support for cell-type labels in a query dataset, allowing for a confidently labeled single-cell map. 
+
