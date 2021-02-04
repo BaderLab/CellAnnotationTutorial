@@ -52,4 +52,4 @@ Here, we extract marker genes and associated pathways from the query dataset. To
 
 ## Timing
 
-The entire code takes about XX minutes to install and 10 minutes to run.
+The associated R packages take about 5 minutes to install (R, itself, only takes a couple of minutes), and the code takes about 10 minutes to run.
