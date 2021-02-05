@@ -15,7 +15,7 @@ R version | Packages                    |                |
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
 "**" = packages must be installed by from github using devtools, see code block below.
 
-Alternatively, an installation code chunk has been provided below to help install the latest versions of all of the above programs. Run this only if you need to install all programs from scratch.  Select compile from source if prompted.
+Alternatively, an installation code chunk has been provided below to help install the latest versions of all of the above packages. Run this only if you need to install all programs from scratch.  Select compile from source if prompted.
 
 ```{r, echo = TRUE, results = 'hide'}
 install.packages(c("BiocManager","Seurat","SCINA","ggplot2","devtools","shiny"))
