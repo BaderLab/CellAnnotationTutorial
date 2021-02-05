@@ -464,7 +464,7 @@ The expression of marker genes across clusters are commonly viewed as dot plots 
 require(dplyr)
 # Retrieve the top 5 marker genes per cluster
 top5 <- markers_seur %>% group_by(cluster) %>%
-  dplyr::top_n(n = 5, wt = avg_logFC)
+  dplyr::top_n(n = 5, wt = avg_log2FC)
 # Create the dot plot
 Seurat::DotPlot(query_seur, features = unique(top5$gene)) +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 1,
