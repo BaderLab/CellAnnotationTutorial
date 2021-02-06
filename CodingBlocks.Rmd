@@ -406,7 +406,9 @@ predictions.scina = SCINA::SCINA(exp = exprMatrix, signatures = markers$genesets
 colData(query_sce)$SCINA <- predictions.scina$cell_labels
 
 # Make a UMAP and add the SCINA cell-type annotations
-scater::plotReducedDim(query_sce, dimred="UMAP", colour_by="SCINA")
+scater::plotReducedDim(query_sce, dimred="UMAP", colour_by="SCINA") +
+  ggplot2::theme(legend.position = "bottom",
+                 legend.text = ggplot2::element_text(size = 4))
 
 ```
 
