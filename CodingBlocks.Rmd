@@ -467,8 +467,8 @@ require(dplyr)
 # Retrieve the top 5 marker genes per cluster
 # Use whichever genes have the highest values under the AVG_LOG column
 top5 <- markers_seur %>% group_by(cluster) %>%
-  dplyr::slice_max(n = 5,
-                   order_by = grep("^avg_log", colnames(markers_seur), value = TRUE))
+  dplyr::slice_max(get(grep("^avg_log", colnames(markers_seur), value = TRUE)),
+                   n = 5)
 # Create the dot plot
 Seurat::DotPlot(query_seur, features = unique(top5$gene)) +
   ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, vjust = 1,
