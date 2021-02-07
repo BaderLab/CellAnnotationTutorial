@@ -9,7 +9,7 @@ R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
 4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.3*    |ggplot2_3.3.3
          .|Seurat_3.2.2                 |scmap_1.12.0*   |harmony_1.0**
-         .|scater_1.18.3*               |celldex_1.0.0*  |cerebroApp_1.2.2**
+         .|scater_1.18.3*               |celldex_1.0.0*  |cerebroApp_1.3.0**
          .|SCINA_1.2.0                  |SingleR_1.4.0*  |msigdb_0.2.0**
          .|devtools_2.3.2               |                |
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
@@ -487,15 +487,12 @@ Pathway analysis can also be done for each cluster to determine significantly up
 ```{r, echo = TRUE, results = 'hide'}
 # First get marker genes through cerebro
 query_seur <- cerebroApp::getMarkerGenes(query_seur,
+                                         groups = c('seurat_clusters'),
                                          assay = "RNA",
-                                         organism = "hg",
-                                         column_sample = "orig.ident",
-                                         column_cluster = "seurat_clusters")
+                                         organism = "hg")
 
 # Get enriched pathways through cerebro
 query_seur <- cerebroApp::getEnrichedPathways(query_seur,
-                                              column_sample = "orig.ident",
-                                              column_cluster = "seurat_clusters",
                                               databases = c("GO_Biological_Process_2018",
                                                             "GO_Cellular_Component_2018",
                                                             "GO_Molecular_Function_2018",
