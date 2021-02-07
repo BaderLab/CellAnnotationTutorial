@@ -23,7 +23,7 @@ celldex_1.0.0*
 SingleR_1.4.0*
 ggplot2_3.3.3
 harmony_1.0**
-cerebroApp_1.2.2**
+cerebroApp_1.3.0**
 msigdb_0.2.0**
 ```
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
