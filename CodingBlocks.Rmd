@@ -7,8 +7,8 @@ Before beginning this tutorial, make sure you have the following packages instal
 
 R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
-4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.3*    |ggplot2_3.3.3
-         .|Seurat_3.2.2                 |scmap_1.12.0*   |harmony_1.0**
+4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.4*    |ggplot2_3.3.3
+         .|Seurat_3.2.2                 |scmap_1.12.0*   |Harmony_1.0**
          .|scater_1.18.3*               |celldex_1.0.0*  |cerebroApp_1.3.0**
          .|SCINA_1.2.0                  |SingleR_1.4.0*  |msigdb_0.2.0**
          .|devtools_2.3.2               |                |
