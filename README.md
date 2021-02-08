@@ -17,12 +17,12 @@ Seurat_3.2.2
 scater_1.18.3*
 SCINA_1.2.0
 devtools_2.3.2
-dplyr_1.0.3*
+dplyr_1.0.4*
 scmap_1.12.0*
 celldex_1.0.0*
 SingleR_1.4.0*
 ggplot2_3.3.3
-harmony_1.0**
+Harmony_1.0**
 cerebroApp_1.3.0**
 msigdb_0.2.0**
 ```
