@@ -13,15 +13,15 @@ To make recommendations by the tutorial more accessible, we have provided an R N
 This code has been successfully run using `R 4.0.3` and the following packages:
 ```
 SingleCellExperiment_1.12.0*
-Seurat_3.2.2
-scater_1.18.3*
+Seurat_4.1.1
+scater_1.18.6*
 SCINA_1.2.0
-devtools_2.3.2
-dplyr_1.0.4*
+devtools_2.4.3
+dplyr_1.0.9*
 scmap_1.12.0*
 celldex_1.0.0*
-SingleR_1.4.0*
-ggplot2_3.3.3
+SingleR_1.4.1*
+ggplot2_3.3.6
 Harmony_1.0**
 cerebroApp_1.3.0**
 msigdb_0.2.0**
