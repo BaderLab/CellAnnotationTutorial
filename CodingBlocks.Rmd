@@ -7,11 +7,11 @@ Before beginning this tutorial, make sure you have the following packages instal
 
 R version | Packages                    |                |
 ----------|-----------------------------|----------------|-----------------
-4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.4*    |ggplot2_3.3.3
-         .|Seurat_3.2.2                 |scmap_1.12.0*   |Harmony_1.0**
-         .|scater_1.18.3*               |celldex_1.0.0*  |cerebroApp_1.3.0**
-         .|SCINA_1.2.0                  |SingleR_1.4.0*  |msigdb_0.2.0**
-         .|devtools_2.3.2               |                |
+4.0.3     |SingleCellExperiment_1.12.0* |dplyr_1.0.9*    |ggplot2_3.3.6
+         .|Seurat_4.1.1                 |scmap_1.12.0*   |harmony_1.0**
+         .|scater_1.18.6*               |celldex_1.0.0*  |cerebroApp_1.3.0**
+         .|SCINA_1.2.0                  |SingleR_1.4.1*  |msigdb_0.2.0**
+         .|devtools_2.4.3               |                |
 "*" = packages must be installed by running `BiocManager::install("package")` instead of `install.packages("package")`.  
 "**" = packages must be installed by from github using devtools, see code block below.
 
@@ -285,7 +285,7 @@ query_seur@active.ident <- factor(rep("query", ncol(query_seur)))
 
 # Downsample the reference to be similar to query in terms of total UMIs
 totalUMI <- median(query_seur@meta.data$nCount_RNA)
-ref_seur@assays$RNA@counts <- Seurat::SampleUMI(ref_seur@assays$RNA@counts,
+ref_seur@assays$originalexp@counts <- Seurat::SampleUMI(ref_seur@assays$originalexp@counts,
                                                 max.umi=totalUMI, upsample=FALSE)
 
 # Merge the datasets together into a single Seurat object
@@ -305,7 +305,10 @@ merged_seur <- Seurat::RunPCA(merged_seur)
 merged_seur <- Seurat::RunUMAP(merged_seur, dims=1:15)
 Seurat::DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("Before Integration")
 # Run Harmony to remove batch effects
-merged_seur <- harmony::RunHarmony(merged_seur, "source", dims.use=1:15)
+merged_seur <- harmony::RunHarmony(merged_seur, 
+                                   "source", 
+                                   dims.use=1:15,
+                                   assay.use = "originalexp")
 merged_seur <- Seurat::RunUMAP(merged_seur, dims=1:15, reduction="harmony")
 # Plot the data
 Seurat::DimPlot(merged_seur, reduction="umap") + ggplot2::ggtitle("After Integration")
@@ -343,7 +346,7 @@ cluster_labs <- c("0"="ambiguous",
 
 # Assign cluster label to the associated query cells
 # (the query cells that had been assigned the same cluster label)
-merged_seur@meta.data$annotation <- cluster_labs[merged_seur@meta.data$RNA_snn_res.0.5]
+merged_seur@meta.data$annotation <- cluster_labs[merged_seur@meta.data$originalexp_snn_res.0.5]
 
 # Add the results to the SingleCellExperiment Object and plot
 query_sce$Harmony_lab <- merged_seur@meta.data$annotation[merged_seur@meta.data$source =="query"]
@@ -488,7 +491,7 @@ Pathway analysis can also be done for each cluster to determine significantly up
 # First get marker genes through cerebro
 query_seur <- cerebroApp::getMarkerGenes(query_seur,
                                          groups = c('seurat_clusters'),
-                                         assay = "RNA",
+                                         assay = "originalexp",
                                          organism = "hg")
 
 # Get enriched pathways through cerebro
